@@ -242,7 +242,38 @@ a {
 }
 
 .plans-grid {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.centered-visual {
+  margin-top: 2rem;
+  display: flex;
+  justify-content: center;
+}
+
+.centered-visual img {
+  width: min(100%, 420px);
+  border-radius: 2rem;
+  box-shadow: var(--shadow);
+}
+
+.hero-note {
+  margin-top: 1rem;
+  color: #d0d8f2;
+}
+
+.trainer-addon {
+  margin-top: 1.5rem;
+  padding: 1.45rem 1.8rem;
+  background: rgba(127, 92, 255, 0.08);
+  border: 1px solid rgba(127, 92, 255, 0.18);
+  border-radius: var(--radius);
+  color: var(--text);
+}
+
+.trainer-addon p {
+  margin: 0;
+  line-height: 1.8;
 }
 
 .plan-card,
@@ -292,7 +323,7 @@ a {
 }
 
 .dashboard-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
 }
 
 .dashboard-card {

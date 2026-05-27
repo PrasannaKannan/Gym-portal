@@ -13,6 +13,16 @@ A modern static gym website portal for Aura Elite Fitness built with HTML, CSS, 
 - `assets/hero.svg`
 - `assets/gym-workout.svg`
 - `assets/dashboard.svg`
+- `assets/welcome.gif`
+- `assets/motivate.gif`
+- `assets/whatsapp.gif`
+
+## Features
+
+- Animated GIFs on the homepage, membership page, and dashboard
+- Membership pricing shown in INR
+- Personal trainer add-on option at `₹750/session`
+- WhatsApp reminder and offers callout in the CRM dashboard
 
 ## Usage
 
