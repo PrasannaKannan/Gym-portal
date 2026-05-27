@@ -29,6 +29,21 @@ create table if not exists payments (
 create index if not exists idx_payments_customer on payments(customer_id);
 create index if not exists idx_payments_date on payments(payment_date);
 
+-- packages table: separate package records referenced by customers
+create table if not exists packages (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  cost numeric(10,2) not null default 0,
+  created_at timestamptz default now()
+);
+
+create index if not exists idx_packages_name on packages(name);
+
+-- Insert some sample packages (no-op if already present)
+insert into packages (name, cost) values ('Starter', 999.00) on conflict do nothing;
+insert into packages (name, cost) values ('Performance', 1999.00) on conflict do nothing;
+insert into packages (name, cost) values ('Elite', 2999.00) on conflict do nothing;
+
 -- Example Row Level Security (RLS) policies
 -- NOTE: Adjust these policies to your deployment model. The static client uses the anon key,
 -- so to require authenticated admin users you should enable Supabase Auth and then adapt policies.
@@ -104,6 +119,7 @@ create policy "admins_modify_payments" on payments
 alter table customers add column if not exists email text;
 alter table customers add column if not exists personal_training boolean default false;
 alter table customers add column if not exists requested_package text;
+alter table customers add column if not exists package_id uuid references packages(id);
 
 -- NOTES:
 -- 1) Create an Auth user in Supabase for the admin email (Auth → Users) with the password you provided.

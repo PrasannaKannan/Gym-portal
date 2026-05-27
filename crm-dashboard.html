@@ -51,6 +51,7 @@
                   <button class="button tertiary text-left nav-item" data-view="add">Add Customer</button>
                   <button class="button tertiary text-left nav-item" data-view="payment">Log Payment</button>
                   <button class="button tertiary text-left nav-item" data-view="directory">Customer Directory</button>
+                  <button class="button tertiary text-left nav-item" data-view="packages">Packages</button>
                 </nav>
               </div>
             </aside>
@@ -73,11 +74,8 @@
                   </div>
                   <div>
                     <label class="block text-sm text-gray-300">Package</label>
-                    <select name="package" class="w-full rounded px-3 py-2 bg-[#071827] border border-gray-700">
-                      <option>Monthly</option>
-                      <option>Quarterly</option>
-                      <option>Annual</option>
-                      <option>Custom</option>
+                    <select id="addPackageSelect" name="package" class="w-full rounded px-3 py-2 bg-[#071827] border border-gray-700">
+                      <option value="">— Select package —</option>
                     </select>
                   </div>
                   <div class="flex gap-2">
@@ -138,6 +136,32 @@
                       </tr>
                     </thead>
                     <tbody id="customersTableBody"></tbody>
+                  </table>
+                </div>
+              </div>
+              <div id="view-packages" class="table-card hidden">
+                <h2>Manage Packages</h2>
+                <form id="packageForm" class="mt-3 grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-sm text-gray-300">Package name</label>
+                    <input id="pkgName" required class="w-full rounded px-3 py-2 bg-[#071827] border border-gray-700" />
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-300">Cost (₹)</label>
+                    <input id="pkgCost" type="number" step="0.01" required class="w-full rounded px-3 py-2 bg-[#071827] border border-gray-700" />
+                  </div>
+                  <div class="col-span-2 text-right">
+                    <input type="hidden" id="pkgId" />
+                    <button id="pkgReset" type="button" class="button secondary">Reset</button>
+                    <button class="button primary">Save Package</button>
+                  </div>
+                </form>
+                <div class="mt-4 overflow-auto">
+                  <table class="w-full table-auto">
+                    <thead>
+                      <tr class="text-left text-gray-300"><th class="p-2">Name</th><th class="p-2">Cost (₹)</th><th class="p-2">Actions</th></tr>
+                    </thead>
+                    <tbody id="packagesTableBody"></tbody>
                   </table>
                 </div>
               </div>
@@ -374,6 +398,14 @@
       const assignPackage = document.getElementById('assignPackage');
       const assignPersonal = document.getElementById('assignPersonal');
       const closeAssign = document.getElementById('closeAssign');
+      // package management
+      const addPackageSelect = document.getElementById('addPackageSelect');
+      const pkgForm = document.getElementById('packageForm');
+      const pkgName = document.getElementById('pkgName');
+      const pkgCost = document.getElementById('pkgCost');
+      const pkgId = document.getElementById('pkgId');
+      const pkgReset = document.getElementById('pkgReset');
+      const packagesTableBody = document.getElementById('packagesTableBody');
 
       function showToast(message, type='info'){
         toastEl.textContent = message;
@@ -546,10 +578,12 @@
         const name = fd.get('name').trim();
         const phone = fd.get('phone').trim();
         const address = fd.get('address').trim();
-        const package_info = fd.get('package');
+        const package_id = fd.get('package') || null;
         if(!name || !phone){ showToast('Name and phone are required','error'); return; }
         try{
-          const { data, error } = await supabase.from('customers').insert([{ name, phone_number: phone, address, package_info }]).select();
+          const payload = { name, phone_number: phone, address };
+          if(package_id) payload.package_id = package_id;
+          const { data, error } = await supabase.from('customers').insert([payload]).select();
           if(error) throw error;
           showToast('Customer added');
           addCustomerForm.reset();
@@ -575,15 +609,19 @@
         requestsTableBody.innerHTML = '';
         const requests = arr.filter(c=> c.requested_package && !c.package_info);
         requests.forEach(c=>{
+          const pkg = (window._packages||[]).find(p=> p.id === c.requested_package || p.id === c.package_id);
+          const requested = pkg ? `${pkg.name} (₹${pkg.cost})` : (c.requested_package||'');
           const tr = document.createElement('tr');
-          tr.innerHTML = `<td class="p-2">${escapeHtml(c.name)}</td><td class="p-2">${escapeHtml(c.phone_number)}</td><td class="p-2">${escapeHtml(c.requested_package||'')}</td><td class="p-2"><button data-id="${c.id}" class="button primary assign-btn">Assign</button></td>`;
+          tr.innerHTML = `<td class="p-2">${escapeHtml(c.name)}</td><td class="p-2">${escapeHtml(c.phone_number)}</td><td class="p-2">${escapeHtml(requested)}</td><td class="p-2"><button data-id="${c.id}" class="button primary assign-btn">Assign</button></td>`;
           requestsTableBody.appendChild(tr);
         });
         // User list
         userListBody.innerHTML = '';
         arr.forEach(c=>{
+          const pkg = (window._packages||[]).find(p=> p.id === c.package_id);
+          const pkgText = pkg ? `${pkg.name} (₹${pkg.cost})` : (c.package_info||'');
           const tr = document.createElement('tr');
-          tr.innerHTML = `<td class="p-2">${escapeHtml(c.name)}</td><td class="p-2">${escapeHtml(c.phone_number)}</td><td class="p-2">${escapeHtml(c.package_info||'')}</td><td class="p-2">${c.personal_training? 'Yes':'No'}</td><td class="p-2"><button data-id="${c.id}" class="button tertiary assign-btn">Assign</button></td>`;
+          tr.innerHTML = `<td class="p-2">${escapeHtml(c.name)}</td><td class="p-2">${escapeHtml(c.phone_number)}</td><td class="p-2">${escapeHtml(pkgText)}</td><td class="p-2">${c.personal_training? 'Yes':'No'}</td><td class="p-2"><button data-id="${c.id}" class="button tertiary assign-btn">Assign</button></td>`;
           userListBody.appendChild(tr);
         });
         document.querySelectorAll('.assign-btn').forEach(b=> b.addEventListener('click', (ev)=> openAssign(ev.target.dataset.id)));
@@ -593,7 +631,8 @@
         const c = (window._customers||[]).find(x=> x.id===id);
         if(!c) return showToast('Customer not found','error');
         assignCustomerId.value = id;
-        assignPackage.value = c.requested_package || c.package_info || 'Starter';
+        // prefer customer's package_id or requested_package (string) fallback
+        if(c.package_id) assignPackage.value = c.package_id; else assignPackage.value = c.requested_package || c.package_info || '';
         assignPersonal.checked = !!c.personal_training;
         assignModal.classList.remove('hidden');
       }
@@ -605,7 +644,12 @@
         if(!supabase) { showToast('Supabase not configured','error'); return; }
         const id = assignCustomerId.value;
         try{
-          const { data, error } = await supabase.from('customers').update({ package_info: assignPackage.value, personal_training: assignPersonal.checked, requested_package: null }).eq('id', id).select();
+          // assignPackage.value contains package id when packages are present
+          const pkgId = assignPackage.value || null;
+          const pkg = (window._packages||[]).find(p=> p.id === pkgId);
+          const payload = { personal_training: assignPersonal.checked, requested_package: null };
+          if(pkg) { payload.package_id = pkg.id; payload.package_info = pkg.name; } else { payload.package_info = assignPackage.value; payload.package_id = null; }
+          const { data, error } = await supabase.from('customers').update(payload).eq('id', id).select();
           if(error) throw error;
           showToast('Package assigned');
           assignModal.classList.add('hidden');
@@ -654,8 +698,10 @@
       function renderCustomerTable(list){
         customersTableBody.innerHTML = '';
         const rows = (list || []).map(c=>{
+          const pkg = (window._packages||[]).find(p=> p.id === c.package_id);
+          const pkgText = pkg ? `${pkg.name} (₹${pkg.cost})` : (c.package_info||'');
           const tr = document.createElement('tr');
-          tr.innerHTML = `<td class="p-2">${escapeHtml(c.name)}</td><td class="p-2">${escapeHtml(c.phone_number)}</td><td class="p-2">${escapeHtml(c.package_info||'')}</td><td class="p-2"><button data-id="${c.id}" class="button tertiary view-history">View History</button></td>`;
+          tr.innerHTML = `<td class="p-2">${escapeHtml(c.name)}</td><td class="p-2">${escapeHtml(c.phone_number)}</td><td class="p-2">${escapeHtml(pkgText)}</td><td class="p-2"><button data-id="${c.id}" class="button tertiary view-history">View History</button></td>`;
           return tr;
         });
         rows.forEach(r=> customersTableBody.appendChild(r));
@@ -701,7 +747,70 @@
         if(config.adminUser) adminUserInput.value = config.adminUser;
         createSupabaseClient();
         setLoggedIn(false);
+        // initial load of packages (if Supabase configured this will fetch)
+        loadPackages();
       })();
+
+      // Package management
+      async function loadPackages(){
+        if(!supabase) { window._packages = []; renderPackageOptions(); renderPackages([]); return; }
+        try{
+          const { data, error } = await supabase.from('packages').select('*').order('name', { ascending:true });
+          if(error) throw error;
+          window._packages = data || [];
+          renderPackageOptions();
+          renderPackages(window._packages);
+        }catch(err){ window._packages = []; renderPackageOptions(); renderPackages([]); }
+      }
+
+      function renderPackageOptions(){
+        const arr = window._packages || [];
+        // assignPackage and addPackageSelect
+        assignPackage.innerHTML = '';
+        const emptyOpt = document.createElement('option'); emptyOpt.value = ''; emptyOpt.textContent = '— Select package —'; assignPackage.appendChild(emptyOpt);
+        addPackageSelect.innerHTML = '';
+        const addEmpty = document.createElement('option'); addEmpty.value = ''; addEmpty.textContent = '— Select package —'; addPackageSelect.appendChild(addEmpty);
+        arr.forEach(p=>{
+          const opt = document.createElement('option'); opt.value = p.id; opt.textContent = `${p.name} — ₹${p.cost}`; assignPackage.appendChild(opt);
+          const opt2 = document.createElement('option'); opt2.value = p.id; opt2.textContent = `${p.name} — ₹${p.cost}`; addPackageSelect.appendChild(opt2);
+        });
+      }
+
+      function renderPackages(list){
+        packagesTableBody.innerHTML = '';
+        (list||[]).forEach(p=>{
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td class="p-2">${escapeHtml(p.name)}</td><td class="p-2">${escapeHtml(p.cost)}</td><td class="p-2"><button data-id="${p.id}" class="button tertiary edit-pkg">Edit</button> <button data-id="${p.id}" class="button secondary del-pkg">Delete</button></td>`;
+          packagesTableBody.appendChild(tr);
+        });
+        document.querySelectorAll('.edit-pkg').forEach(b=> b.addEventListener('click', (ev)=>{
+          const id = ev.target.dataset.id; const p = (window._packages||[]).find(x=>x.id===id); if(!p) return; pkgId.value = p.id; pkgName.value = p.name; pkgCost.value = p.cost;
+        }));
+        document.querySelectorAll('.del-pkg').forEach(b=> b.addEventListener('click', async (ev)=>{
+          const id = ev.target.dataset.id; if(!confirm('Delete this package?')) return;
+          try{
+            const { error } = await supabase.from('packages').delete().eq('id', id);
+            if(error) throw error;
+            showToast('Package deleted');
+            await loadPackages();
+          }catch(err){ showToast(err.message || String(err),'error'); }
+        }));
+      }
+
+      pkgReset.addEventListener('click', ()=>{ pkgId.value=''; pkgName.value=''; pkgCost.value=''; });
+
+      pkgForm.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        if(!supabase){ showToast('Supabase not configured','error'); return; }
+        const id = pkgId.value || null; const name = pkgName.value.trim(); const cost = parseFloat(pkgCost.value)||0;
+        if(!name){ showToast('Package name required','error'); return; }
+        try{
+          if(id){ const { error } = await supabase.from('packages').update({ name, cost }).eq('id', id); if(error) throw error; showToast('Package updated'); }
+          else { const { error } = await supabase.from('packages').insert([{ name, cost }]); if(error) throw error; showToast('Package created'); }
+          pkgForm.reset(); pkgId.value=''; await loadPackages();
+        }catch(err){ showToast(err.message || String(err),'error'); }
+      });
+
 
     </script>
   </body>
