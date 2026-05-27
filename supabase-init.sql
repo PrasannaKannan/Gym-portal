@@ -39,10 +39,13 @@ create table if not exists packages (
 
 create index if not exists idx_packages_name on packages(name);
 
+-- ensure package name uniqueness so re-running inserts don't create duplicates
+create unique index if not exists idx_packages_name_unique on packages(name);
+
 -- Insert some sample packages (no-op if already present)
-insert into packages (name, cost) values ('Starter', 999.00) on conflict do nothing;
-insert into packages (name, cost) values ('Performance', 1999.00) on conflict do nothing;
-insert into packages (name, cost) values ('Elite', 2999.00) on conflict do nothing;
+insert into packages (name, cost) values ('Starter', 999.00) on conflict (name) do nothing;
+insert into packages (name, cost) values ('Performance', 1999.00) on conflict (name) do nothing;
+insert into packages (name, cost) values ('Elite', 2999.00) on conflict (name) do nothing;
 
 -- Example Row Level Security (RLS) policies
 -- NOTE: Adjust these policies to your deployment model. The static client uses the anon key,
@@ -85,9 +88,12 @@ alter table customers enable row level security;
 alter table payments enable row level security;
 
 -- Allow any authenticated user to read customers/payments
+-- create/select policies (drop first so script is re-runnable)
+drop policy if exists "authenticated_select_customers" on customers;
 create policy "authenticated_select_customers" on customers
   for select using (auth.role() = 'authenticated');
 
+drop policy if exists "authenticated_select_payments" on payments;
 create policy "authenticated_select_payments" on payments
   for select using (auth.role() = 'authenticated');
 
