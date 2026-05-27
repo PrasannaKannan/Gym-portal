@@ -745,8 +745,31 @@
 
       function escapeHtml(s){ if(!s) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
 
+      async function restoreAdminSession(){
+        if(!supabase) return;
+        try{
+          const { data, error } = await supabase.auth.getSession();
+          if(error) throw error;
+          if(data?.session){
+            setLoggedIn(true);
+            await loadPackages();
+            await refreshCustomers();
+          }
+        }catch(err){ console.warn('Auth session restore failed', err); }
+
+        supabase.auth.onAuthStateChange(async (event, session)=>{
+          if(session){
+            setLoggedIn(true);
+            await loadPackages();
+            await refreshCustomers();
+          } else {
+            setLoggedIn(false);
+          }
+        });
+      }
+
       // Init
-      (function init(){
+      (async function init(){
         loadLocalConfig();
         if(config.supabaseUrl) supabaseUrlInput.value = config.supabaseUrl;
         if(config.supabaseKey) supabaseKeyInput.value = config.supabaseKey;
@@ -756,7 +779,10 @@
           configModal.classList.remove('hidden');
           showToast('Please enter your Supabase URL and anon key to configure the CRM.', 'error');
         }
-        setLoggedIn(false);
+        await restoreAdminSession();
+        if(!isLoggedIn){
+          setLoggedIn(false);
+        }
       })();
 
       // Package management
