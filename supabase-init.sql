@@ -99,6 +99,12 @@ create policy "admins_modify_payments" on payments
     )
   );
 
+-- If you already ran the script earlier, add the following columns to customers
+-- to support public join requests: email, personal_training, requested_package
+alter table customers add column if not exists email text;
+alter table customers add column if not exists personal_training boolean default false;
+alter table customers add column if not exists requested_package text;
+
 -- NOTES:
 -- 1) Create an Auth user in Supabase for the admin email (Auth → Users) with the password you provided.
 -- 2) The frontend must sign in via Supabase Auth to obtain an authenticated session (so auth.role() = 'authenticated').
