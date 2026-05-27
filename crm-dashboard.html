@@ -1,134 +1,624 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CRM Dashboard | Aura Elite Fitness</title>
-  <link rel="stylesheet" href="styles.css" />
-</head>
-<body>
-  <header class="site-header">
-    <div class="container header-inner">
-      <a class="brand" href="index.html">Aura Elite Fitness</a>
-      <nav class="site-nav">
-        <a href="index.html#home">Home</a>
-        <a href="index.html#about">About</a>
-        <a href="membership.html">Membership</a>
-        <a href="crm-dashboard.html">CRM Dashboard</a>
-      </nav>
-      <button class="nav-toggle" aria-label="Open navigation">☰</button>
-    </div>
-  </header>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Gym CRM — Aura Elite Fitness</title>
+    <link rel="stylesheet" href="styles.css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Small overrides to blend with existing theme */
+      .hidden { display: none; }
+      .toast { position: fixed; right: 1rem; bottom: 1rem; z-index: 60; }
+      .modal-backdrop { background: rgba(2,6,23,0.6); position: fixed; inset: 0; z-index:50; display:flex; align-items:center; justify-content:center; }
+    </style>
+  </head>
+  <body class="bg-[#07101a] text-white">
+    <header class="site-header">
+      <div class="container header-inner">
+        <a class="brand" href="index.html">Aura Elite Fitness</a>
+        <nav class="site-nav">
+          <a href="index.html#home">Home</a>
+          <a href="index.html#about">About</a>
+          <a href="membership.html">Membership</a>
+          <a href="crm-dashboard.html">CRM Dashboard</a>
+        </nav>
+        <div style="display:flex;gap:0.75rem;align-items:center">
+          <button id="configBtn" class="button secondary">Config</button>
+    
+    <!-- Auth Modals -->
+    
+          <button id="loginBtn" class="button primary">Login</button>
+          <button id="logoutBtn" class="button tertiary hidden">Logout</button>
+        </div>
+      </div>
+    </header>
 
-  <main>
-    <section class="section page-hero">
+    <main class="p-6">
       <div class="container">
-        <div class="section-heading">
-          <span>CRM Dashboard</span>
-          <h1>Manage members, bookings, and performance</h1>
-          <p>Our gym portal dashboard gives staff fast access to attendance, member growth, and class schedules.</p>
+        <div id="not-authorized" class="table-card">
+          <h2>Admin access required</h2>
+          <p>Only an administrator can access the CRM dashboard. Click <strong>Login</strong> to sign in or open <strong>Config</strong> to set Supabase credentials and admin account.</p>
         </div>
-        <div class="centered-visual">
-          <img src="assets/whatsapp.gif" alt="WhatsApp reminders animation" />
+
+        <div id="crm-app" class="hidden">
+          <div class="flex gap-6">
+            <aside class="w-64">
+              <div class="plan-card">
+                <h3 class="eyebrow">Admin</h3>
+                <nav class="mt-4 flex flex-col gap-2">
+                  <button class="button tertiary text-left nav-item" data-view="add">Add Customer</button>
+                  <button class="button tertiary text-left nav-item" data-view="payment">Log Payment</button>
+                  <button class="button tertiary text-left nav-item" data-view="directory">Customer Directory</button>
+                </nav>
+              </div>
+            </aside>
+
+            <section class="flex-1">
+              <div id="view-add" class="table-card hidden">
+                <h2>Add New Customer</h2>
+                <form id="addCustomerForm" class="mt-4 space-y-3">
+                  <div>
+                    <label class="block text-sm text-gray-300">Full name</label>
+                    <input required name="name" class="w-full rounded px-3 py-2 bg-[#071827] border border-gray-700" />
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-300">Phone number</label>
+                    <input required name="phone" class="w-full rounded px-3 py-2 bg-[#071827] border border-gray-700" />
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-300">Address</label>
+                    <input name="address" class="w-full rounded px-3 py-2 bg-[#071827] border border-gray-700" />
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-300">Package</label>
+                    <select name="package" class="w-full rounded px-3 py-2 bg-[#071827] border border-gray-700">
+                      <option>Monthly</option>
+                      <option>Quarterly</option>
+                      <option>Annual</option>
+                      <option>Custom</option>
+                    </select>
+                  </div>
+                  <div class="flex gap-2">
+                    <button type="submit" class="button primary">Add Customer</button>
+                    <button type="reset" class="button secondary">Reset</button>
+                  </div>
+                </form>
+              </div>
+
+              <div id="view-payment" class="table-card hidden">
+                <h2>Log Fees Payment</h2>
+                <div class="mt-3">
+                  <label class="block text-sm text-gray-300">Search customer</label>
+                  <input id="paymentSearch" placeholder="Name or phone" class="w-full rounded px-3 py-2 bg-[#071827] border border-gray-700" />
+                </div>
+                <form id="logPaymentForm" class="mt-3 space-y-3">
+                  <div>
+                    <label class="block text-sm text-gray-300">Selected customer</label>
+                    <select id="paymentCustomerSelect" required class="w-full rounded px-3 py-2 bg-[#071827] border border-gray-700"></select>
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-300">Amount</label>
+                    <input name="amount" type="number" step="0.01" required class="w-full rounded px-3 py-2 bg-[#071827] border border-gray-700" />
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-300">Payment date</label>
+                    <input name="date" type="date" required class="w-full rounded px-3 py-2 bg-[#071827] border border-gray-700" />
+                  </div>
+                  <div>
+                    <label class="block text-sm text-gray-300">Status</label>
+                    <select name="status" class="w-full rounded px-3 py-2 bg-[#071827] border border-gray-700">
+                      <option>Paid</option>
+                      <option>Pending</option>
+                      <option>Failed</option>
+                    </select>
+                  </div>
+                  <div class="flex gap-2">
+                    <button class="button primary">Log Payment</button>
+                    <button type="reset" class="button secondary">Reset</button>
+                  </div>
+                </form>
+              </div>
+
+              <div id="view-directory" class="table-card hidden">
+                <h2>Customer Directory</h2>
+                <div class="mt-3 flex gap-2">
+                  <input id="directorySearch" placeholder="Search by name or phone" class="flex-1 rounded px-3 py-2 bg-[#071827] border border-gray-700" />
+                  <button id="refreshBtn" class="button tertiary">Refresh</button>
+                </div>
+                <div class="mt-4 overflow-auto">
+                  <table class="w-full table-auto">
+                    <thead>
+                      <tr class="text-left text-gray-300">
+                        <th class="p-2">Name</th>
+                        <th class="p-2">Phone</th>
+                        <th class="p-2">Package</th>
+                        <th class="p-2">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody id="customersTableBody"></tbody>
+                  </table>
+                </div>
+              </div>
+            </section>
+          </div>
         </div>
       </div>
-    </section>
+      
+      <!-- End of Auth Modals -->
+      
+    </main>
 
-    <section class="section dashboard-section">
-      <div class="container dashboard-grid">
-        <div class="dashboard-card">
-          <span>Members</span>
-          <strong>1,250</strong>
-          <p>Active member accounts</p>
-        </div>
-        <div class="dashboard-card">
-          <span>Bookings</span>
-          <strong>420</strong>
-          <p>Classes booked this week</p>
-        </div>
-        <div class="dashboard-card">
-          <span>Retention</span>
-          <strong>87%</strong>
-          <p>Monthly membership strength</p>
-        </div>
-        <div class="dashboard-card">
-          <span>WhatsApp Alerts</span>
-          <strong>Monthly</strong>
-          <p>Set reminders, special offers, and member updates through WhatsApp.</p>
-          <a class="button primary" href="#">Configure Alerts</a>
-        </div>
-        <div class="dashboard-card">
-          <span>Leads</span>
-          <strong>95</strong>
-          <p>New prospect inquiries</p>
-        </div>
+    <!-- Configuration Modal -->
+    <div id="configModal" class="modal-backdrop hidden">
+      <div class="plan-card w-[720px]">
+        <h2>Configuration</h2>
+        <form id="configForm" class="mt-3 space-y-3">
+          <div>
+            <label class="block text-sm text-gray-300">Supabase URL</label>
+            <input id="supabaseUrl" placeholder="https://xyz.supabase.co" class="w-full rounded px-3 py-2 bg-[#071827] border border-gray-700" />
+          </div>
+          <div>
+            <label class="block text-sm text-gray-300">Supabase Anon Key</label>
+            <input id="supabaseKey" placeholder="public-anon-key" class="w-full rounded px-3 py-2 bg-[#071827] border border-gray-700" />
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-sm text-gray-300">Admin username</label>
+              <input id="adminUser" class="w-full rounded px-3 py-2 bg-[#071827] border border-gray-700" />
+            </div>
+            <div>
+              <label class="block text-sm text-gray-300">Admin password</label>
+              <input id="adminPass" type="password" class="w-full rounded px-3 py-2 bg-[#071827] border border-gray-700" />
+            </div>
+          </div>
+          <div class="flex gap-2 justify-end">
+            <button type="button" id="closeConfig" class="button secondary">Close</button>
+            <button class="button primary">Save</button>
+          </div>
+        </form>
       </div>
-
-      <div class="container dashboard-detail">
-        <div class="table-card">
-          <h2>Recent member activity</h2>
-          <table>
-            <thead>
-              <tr>
-                <th>Member</th>
-                <th>Plan</th>
-                <th>Last Visit</th>
-                <th>Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td>Olivia Hughes</td>
-                <td>Performance</td>
-                <td>Today</td>
-                <td>Active</td>
-              </tr>
-              <tr>
-                <td>Marcus Lee</td>
-                <td>Elite</td>
-                <td>Yesterday</td>
-                <td>Active</td>
-              </tr>
-              <tr>
-                <td>Priya Patel</td>
-                <td>Starter</td>
-                <td>Mon</td>
-                <td>Renewal due</td>
-              </tr>
-              <tr>
-                <td>Jason Doe</td>
-                <td>Performance</td>
-                <td>Tue</td>
-                <td>Follow-up</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="insights-card">
-          <h2>Staff insights</h2>
-          <ul>
-            <li>New membership growth up 12% this month.</li>
-            <li>Top performing class: Strength Interval.</li>
-            <li>Member satisfaction rating: 4.9/5.</li>
-            <li>Upcoming training session capacity at 76%.</li>
-          </ul>
-          <a class="button secondary" href="#">Download report</a>
-        </div>
-      </div>
-    </section>
-  </main>
-
-  <footer class="site-footer">
-    <div class="container footer-inner">
-      <p>© 2026 Aura Elite Fitness</p>
-      <nav class="footer-nav">
-        <a href="index.html">Home</a>
-        <a href="membership.html">Membership</a>
-        <a href="index.html#about">About</a>
-      </nav>
     </div>
-  </footer>
 
-  <script src="script.js"></script>
-</body>
+    <!-- Payment History Modal -->
+    <div id="historyModal" class="modal-backdrop hidden">
+      <div class="plan-card w-[720px] max-h-[80vh] overflow-auto">
+        <h2 id="historyTitle">Payment History</h2>
+        <div id="historyBody" class="mt-3"></div>
+        <div class="mt-4 text-right">
+          <button id="closeHistory" class="button secondary">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <script type="module">
+      import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
+
+      // State
+      let supabase = null;
+      let config = {};
+      let isLoggedIn = false;
+
+      // Elements
+      const configBtn = document.getElementById('configBtn');
+      const configModal = document.getElementById('configModal');
+      const configForm = document.getElementById('configForm');
+      const supabaseUrlInput = document.getElementById('supabaseUrl');
+      const supabaseKeyInput = document.getElementById('supabaseKey');
+      const adminUserInput = document.getElementById('adminUser');
+      const adminPassInput = document.getElementById('adminPass');
+      const closeConfig = document.getElementById('closeConfig');
+      const loginBtn = document.getElementById('loginBtn');
+      const logoutBtn = document.getElementById('logoutBtn');
+      // Auth modals
+      const loginModalHtml = `
+        <div class="modal-backdrop hidden" id="loginModal">
+          <div class="plan-card w-[420px]">
+            <h2>Admin Sign In</h2>
+            <form id="loginForm" class="mt-3 space-y-3">
+              <div>
+                <label class="block text-sm text-gray-300">Email</label>
+                <input id="loginEmail" type="email" required class="w-full rounded px-3 py-2 bg-[#071827] border border-gray-700" />
+              </div>
+              <div>
+                <label class="block text-sm text-gray-300">Password</label>
+                <input id="loginPassword" type="password" required class="w-full rounded px-3 py-2 bg-[#071827] border border-gray-700" />
+              <div class="text-sm text-right">
+                <button type="button" id="forgotLink" class="text-blue-300 hover:underline">Forgot password?</button>
+              </div>
+              </div>
+              <div class="flex justify-end gap-2">
+                <button type="button" id="closeLogin" class="button secondary">Close</button>
+                <button class="button primary">Sign In</button>
+              </div>
+            </form>
+          </div>
+        </div>`;
+
+      const changePassModalHtml = `
+        <div class="modal-backdrop hidden" id="changePassModal">
+          <div class="plan-card w-[420px]">
+            <h2>Change Password</h2>
+            <form id="changePassForm" class="mt-3 space-y-3">
+              <div>
+                <label class="block text-sm text-gray-300">New password</label>
+                <input id="newPassword" type="password" required class="w-full rounded px-3 py-2 bg-[#071827] border border-gray-700" />
+              </div>
+              <div class="flex justify-end gap-2">
+                <button type="button" id="closeChangePass" class="button secondary">Close</button>
+                <button class="button primary">Update Password</button>
+              </div>
+            </form>
+          </div>
+        </div>`;
+
+      document.body.insertAdjacentHTML('beforeend', loginModalHtml + changePassModalHtml);
+
+      const forgotModalHtml = `
+        <div class="modal-backdrop hidden" id="forgotModal">
+          <div class="plan-card w-[420px]">
+            <h2>Reset password</h2>
+            <form id="forgotForm" class="mt-3 space-y-3">
+              <div>
+                <label class="block text-sm text-gray-300">Email</label>
+                <input id="forgotEmail" type="email" required class="w-full rounded px-3 py-2 bg-[#071827] border border-gray-700" />
+              </div>
+              <div class="flex justify-end gap-2">
+                <button type="button" id="closeForgot" class="button secondary">Close</button>
+                <button class="button primary">Send reset email</button>
+              </div>
+            </form>
+          </div>
+        </div>`;
+
+      document.body.insertAdjacentHTML('beforeend', forgotModalHtml);
+
+      const forgotModal = document.getElementById('forgotModal');
+      const forgotForm = document.getElementById('forgotForm');
+      const forgotEmail = document.getElementById('forgotEmail');
+      const closeForgot = document.getElementById('closeForgot');
+      const forgotLink = document.getElementById('forgotLink');
+
+      const loginModal = document.getElementById('loginModal');
+      const loginForm = document.getElementById('loginForm');
+      const loginEmail = document.getElementById('loginEmail');
+      const loginPassword = document.getElementById('loginPassword');
+      const closeLogin = document.getElementById('closeLogin');
+
+      const changePassModal = document.getElementById('changePassModal');
+      const changePassForm = document.getElementById('changePassForm');
+      const newPasswordInput = document.getElementById('newPassword');
+      const closeChangePass = document.getElementById('closeChangePass');
+      const notAuth = document.getElementById('not-authorized');
+      const crmApp = document.getElementById('crm-app');
+      const navItems = document.querySelectorAll('.nav-item');
+
+      const viewAdd = document.getElementById('view-add');
+      const viewPayment = document.getElementById('view-payment');
+      const viewDirectory = document.getElementById('view-directory');
+
+      const addCustomerForm = document.getElementById('addCustomerForm');
+      const logPaymentForm = document.getElementById('logPaymentForm');
+      const paymentSearch = document.getElementById('paymentSearch');
+      const paymentCustomerSelect = document.getElementById('paymentCustomerSelect');
+
+      const directorySearch = document.getElementById('directorySearch');
+      const customersTableBody = document.getElementById('customersTableBody');
+      const refreshBtn = document.getElementById('refreshBtn');
+
+      const historyModal = document.getElementById('historyModal');
+      const historyBody = document.getElementById('historyBody');
+      const historyTitle = document.getElementById('historyTitle');
+      const closeHistory = document.getElementById('closeHistory');
+
+      const toastEl = document.getElementById('toast');
+
+      function showToast(message, type='info'){
+        toastEl.textContent = message;
+        toastEl.className = 'toast';
+        toastEl.style.padding = '0.75rem 1rem';
+        toastEl.style.borderRadius = '8px';
+        toastEl.style.background = type==='error'? 'linear-gradient(90deg,#ff6b6b,#ff8f5c)' : 'linear-gradient(90deg,#2dd4bf,#60a5fa)';
+        toastEl.classList.remove('hidden');
+        setTimeout(()=> toastEl.classList.add('hidden'), 3500);
+      }
+
+      // Utilities
+      async function hashText(text){
+        const enc = new TextEncoder();
+        const data = enc.encode(text);
+        const hash = await crypto.subtle.digest('SHA-256', data);
+        return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,'0')).join('');
+      }
+
+      function saveLocalConfig(){
+        localStorage.setItem('gymcrm_config', JSON.stringify(config));
+      }
+
+      function loadLocalConfig(){
+        try{
+          const raw = localStorage.getItem('gymcrm_config');
+          if(raw) config = JSON.parse(raw);
+        }catch(e){ config = {}; }
+      }
+
+      function createSupabaseClient(){
+        if(config.supabaseUrl && config.supabaseKey){
+          supabase = createClient(config.supabaseUrl, config.supabaseKey);
+        } else supabase = null;
+      }
+      
+      // Auth with Supabase
+      loginBtn.addEventListener('click', ()=>{
+        loginModal.classList.remove('hidden');
+      });
+
+      closeLogin.addEventListener('click', ()=> loginModal.classList.add('hidden'));
+
+      loginForm.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        loadLocalConfig();
+        createSupabaseClient();
+        if(!supabase){ showToast('Supabase not configured','error'); return; }
+        try{
+          const { data, error } = await supabase.auth.signInWithPassword({ email: loginEmail.value, password: loginPassword.value });
+          if(error) throw error;
+          loginModal.classList.add('hidden');
+          setLoggedIn(true);
+          showToast('Signed in');
+          await refreshCustomers();
+        }catch(err){ showToast(err.message || String(err),'error'); }
+      });
+
+      // Forgot password flow
+      forgotLink.addEventListener('click', ()=>{
+        loginModal.classList.add('hidden');
+        forgotModal.classList.remove('hidden');
+      });
+
+      closeForgot.addEventListener('click', ()=> forgotModal.classList.add('hidden'));
+
+      forgotForm.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        loadLocalConfig();
+        createSupabaseClient();
+        if(!supabase){ showToast('Supabase not configured','error'); return; }
+        try{
+          // Send password reset email. redirectTo can be set if desired.
+          const email = forgotEmail.value;
+          const { data, error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/crm-dashboard.html' });
+          if(error) throw error;
+          showToast('Password reset email sent');
+          forgotModal.classList.add('hidden');
+        }catch(err){ showToast(err.message || String(err),'error'); }
+      });
+
+      logoutBtn.addEventListener('click', async ()=>{
+        if(supabase){ await supabase.auth.signOut(); }
+        setLoggedIn(false);
+        showToast('Signed out');
+      });
+
+      // Change password
+      const changePassBtn = document.createElement('button');
+      changePassBtn.className = 'button secondary hidden';
+      changePassBtn.id = 'changePassBtn';
+      changePassBtn.textContent = 'Change Password';
+      document.querySelector('.header-inner').appendChild(changePassBtn);
+
+      changePassBtn.addEventListener('click', ()=> changePassModal.classList.remove('hidden'));
+      closeChangePass.addEventListener('click', ()=> changePassModal.classList.add('hidden'));
+
+      changePassForm.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        if(!supabase){ showToast('Supabase not configured','error'); return; }
+        try{
+          const { data, error } = await supabase.auth.updateUser({ password: newPasswordInput.value });
+          if(error) throw error;
+          showToast('Password updated');
+          changePassModal.classList.add('hidden');
+        }catch(err){ showToast(err.message || String(err),'error'); }
+      });
+
+      function setLoggedIn(v){
+        isLoggedIn = v;
+        if(v){
+          loginBtn.classList.add('hidden');
+          logoutBtn.classList.remove('hidden');
+          notAuth.classList.add('hidden');
+          crmApp.classList.remove('hidden');
+          changePassBtn.classList.remove('hidden');
+          showView('add');
+        } else {
+          loginBtn.classList.remove('hidden');
+          logoutBtn.classList.add('hidden');
+          notAuth.classList.remove('hidden');
+          crmApp.classList.add('hidden');
+          changePassBtn.classList.add('hidden');
+        }
+      }
+
+      // Views
+      function showView(name){
+        viewAdd.classList.add('hidden');
+        viewPayment.classList.add('hidden');
+        viewDirectory.classList.add('hidden');
+        if(name==='add') viewAdd.classList.remove('hidden');
+        if(name==='payment') viewPayment.classList.remove('hidden');
+        if(name==='directory') viewDirectory.classList.remove('hidden');
+      }
+
+      navItems.forEach(btn => btn.addEventListener('click', ()=> showView(btn.dataset.view)));
+
+      // Config handlers
+      configBtn.addEventListener('click', ()=> configModal.classList.remove('hidden'));
+      closeConfig.addEventListener('click', ()=> configModal.classList.add('hidden'));
+
+      configForm.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        const url = supabaseUrlInput.value.trim();
+        const key = supabaseKeyInput.value.trim();
+        const adminUser = adminUserInput.value.trim();
+        const adminPass = adminPassInput.value;
+        if(!url || !key) { showToast('Supabase URL and key required','error'); return; }
+        config.supabaseUrl = url;
+        config.supabaseKey = key;
+        if(adminUser && adminPass){
+          const hashed = await hashText(adminPass);
+          config.adminUser = adminUser;
+          config.adminHash = hashed;
+        }
+        saveLocalConfig();
+        createSupabaseClient();
+        showToast('Configuration saved');
+        configModal.classList.add('hidden');
+      });
+
+      // Login flow: prompt for username & password via simple prompt (keeps UI compact)
+      loginBtn.addEventListener('click', async ()=>{
+        loadLocalConfig();
+        if(!config.adminUser){
+          showToast('No admin configured. Open Config to set up an admin.','error');
+          configModal.classList.remove('hidden');
+          return;
+        }
+        const user = prompt('Admin username');
+        if(!user) return;
+        const pass = prompt('Admin password');
+        if(!pass) return;
+        const hashed = await hashText(pass);
+        if(user === config.adminUser && hashed === config.adminHash){
+          createSupabaseClient();
+          setLoggedIn(true);
+          showToast('Logged in');
+          await refreshCustomers();
+        } else showToast('Invalid admin credentials','error');
+      });
+
+      logoutBtn.addEventListener('click', ()=>{ setLoggedIn(false); showToast('Logged out'); });
+
+      // Forms
+      addCustomerForm.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        if(!supabase){ showToast('Supabase not configured','error'); return; }
+        const fd = new FormData(addCustomerForm);
+        const name = fd.get('name').trim();
+        const phone = fd.get('phone').trim();
+        const address = fd.get('address').trim();
+        const package_info = fd.get('package');
+        if(!name || !phone){ showToast('Name and phone are required','error'); return; }
+        try{
+          const { data, error } = await supabase.from('customers').insert([{ name, phone_number: phone, address, package_info }]).select();
+          if(error) throw error;
+          showToast('Customer added');
+          addCustomerForm.reset();
+          await refreshCustomers();
+        }catch(err){ showToast(err.message || String(err),'error'); }
+      });
+
+      async function refreshCustomers(){
+        if(!supabase) return;
+        try{
+          const { data, error } = await supabase.from('customers').select('*').order('created_at', { ascending:false });
+          if(error) throw error;
+          window._customers = data || [];
+          renderCustomerSelects();
+          renderCustomerTable(data || []);
+        }catch(err){ showToast(err.message || String(err),'error'); }
+      }
+
+      function renderCustomerSelects(){
+        const arr = window._customers || [];
+        paymentCustomerSelect.innerHTML = '';
+        arr.forEach(c=>{
+          const opt = document.createElement('option');
+          opt.value = c.id;
+          opt.textContent = `${c.name} — ${c.phone_number}`;
+          paymentCustomerSelect.appendChild(opt);
+        });
+      }
+
+      paymentSearch.addEventListener('input', ()=>{
+        const q = paymentSearch.value.toLowerCase();
+        const arr = (window._customers||[]).filter(c => (c.name||'').toLowerCase().includes(q) || (c.phone_number||'').toLowerCase().includes(q));
+        paymentCustomerSelect.innerHTML = '';
+        arr.forEach(c=>{
+          const opt = document.createElement('option'); opt.value = c.id; opt.textContent = `${c.name} — ${c.phone_number}`; paymentCustomerSelect.appendChild(opt);
+        });
+      });
+
+      logPaymentForm.addEventListener('submit', async (e)=>{
+        e.preventDefault();
+        if(!supabase){ showToast('Supabase not configured','error'); return; }
+        const fd = new FormData(logPaymentForm);
+        const customer_id = paymentCustomerSelect.value;
+        const amount_paid = fd.get('amount');
+        const payment_date = fd.get('date');
+        const payment_status = fd.get('status');
+        if(!customer_id || !amount_paid) { showToast('Customer and amount required','error'); return; }
+        try{
+          const { data, error } = await supabase.from('payments').insert([{ customer_id, amount_paid, payment_date, payment_status }]).select();
+          if(error) throw error;
+          showToast('Payment logged');
+          logPaymentForm.reset();
+        }catch(err){ showToast(err.message || String(err),'error'); }
+      });
+
+      // Directory
+      function renderCustomerTable(list){
+        customersTableBody.innerHTML = '';
+        const rows = (list || []).map(c=>{
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td class="p-2">${escapeHtml(c.name)}</td><td class="p-2">${escapeHtml(c.phone_number)}</td><td class="p-2">${escapeHtml(c.package_info||'')}</td><td class="p-2"><button data-id="${c.id}" class="button tertiary view-history">View History</button></td>`;
+          return tr;
+        });
+        rows.forEach(r=> customersTableBody.appendChild(r));
+        document.querySelectorAll('.view-history').forEach(b=> b.addEventListener('click', async (ev)=>{
+          const id = b.dataset.id || ev.target.dataset.id;
+          openHistory(id);
+        }));
+      }
+
+      directorySearch.addEventListener('input', ()=>{
+        const q = directorySearch.value.toLowerCase();
+        const arr = (window._customers||[]).filter(c=> (c.name||'').toLowerCase().includes(q) || (c.phone_number||'').toLowerCase().includes(q));
+        renderCustomerTable(arr);
+      });
+
+      refreshBtn.addEventListener('click', ()=> refreshCustomers());
+
+      async function openHistory(customerId){
+        if(!supabase) { showToast('Supabase not configured','error'); return; }
+        try{
+          const cust = (window._customers||[]).find(x=>x.id===customerId);
+          historyTitle.textContent = `Payment History — ${cust?cust.name:'Customer'}`;
+          historyBody.innerHTML = '<p>Loading…</p>';
+          const { data, error } = await supabase.from('payments').select('*').eq('customer_id', customerId).order('payment_date', { ascending: false });
+          if(error) throw error;
+          if(!data || data.length===0) historyBody.innerHTML = '<p>No payments found.</p>';
+          else{
+            historyBody.innerHTML = `<ul class="space-y-2">${data.map(p=> `<li class="p-2 border rounded" ><strong>${p.amount_paid}</strong> — ${new Date(p.payment_date).toLocaleDateString()} — ${escapeHtml(p.payment_status)}</li>`).join('')}</ul>`;
+          }
+          historyModal.classList.remove('hidden');
+        }catch(err){ showToast(err.message || String(err),'error'); }
+      }
+
+      closeHistory.addEventListener('click', ()=> historyModal.classList.add('hidden'));
+
+      function escapeHtml(s){ if(!s) return ''; return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;'); }
+
+      // Init
+      (function init(){
+        loadLocalConfig();
+        if(config.supabaseUrl) supabaseUrlInput.value = config.supabaseUrl;
+        if(config.supabaseKey) supabaseKeyInput.value = config.supabaseKey;
+        if(config.adminUser) adminUserInput.value = config.adminUser;
+        createSupabaseClient();
+        setLoggedIn(false);
+      })();
+
+    </script>
+  </body>
 </html>
