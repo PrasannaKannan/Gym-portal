@@ -6,6 +6,7 @@
     <title>Gym CRM — Aura Elite Fitness</title>
     <link rel="stylesheet" href="styles.css" />
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="supabase-config.js"></script>
     <style>
       /* Small overrides to blend with existing theme */
       .hidden { display: none; }
@@ -434,6 +435,10 @@
           const raw = localStorage.getItem('gymcrm_config');
           if(raw) config = JSON.parse(raw);
         }catch(e){ config = {}; }
+        if((!config.supabaseUrl || !config.supabaseKey) && window.gymcrm_config_defaults){
+          config = Object.assign({}, window.gymcrm_config_defaults, config);
+          saveLocalConfig();
+        }
       }
 
       function createSupabaseClient(){
@@ -460,6 +465,7 @@
           loginModal.classList.add('hidden');
           setLoggedIn(true);
           showToast('Signed in');
+          await loadPackages();
           await refreshCustomers();
         }catch(err){ showToast(err.message || String(err),'error'); }
       });
@@ -746,9 +752,11 @@
         if(config.supabaseKey) supabaseKeyInput.value = config.supabaseKey;
         if(config.adminUser) adminUserInput.value = config.adminUser;
         createSupabaseClient();
+        if(!config.supabaseUrl || !config.supabaseKey){
+          configModal.classList.remove('hidden');
+          showToast('Please enter your Supabase URL and anon key to configure the CRM.', 'error');
+        }
         setLoggedIn(false);
-        // initial load of packages (if Supabase configured this will fetch)
-        loadPackages();
       })();
 
       // Package management

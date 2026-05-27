@@ -150,6 +150,7 @@
   </footer>
 
   <script src="script.js"></script>
+  <script src="supabase-config.js"></script>
   <script type="module">
     import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm';
 
@@ -172,12 +173,20 @@
     closeJoin.addEventListener('click', ()=> joinModal.classList.add('hidden'));
 
     function loadConfig(){
-      try{ return JSON.parse(localStorage.getItem('gymcrm_config')||'{}'); }catch(e){ return {}; }
+      try{ const cfg = JSON.parse(localStorage.getItem('gymcrm_config')||'{}'); return cfg; }catch(e){ return {}; }
+    }
+
+    function resolveConfig(){
+      const cfg = loadConfig();
+      if((!cfg.supabaseUrl || !cfg.supabaseKey) && window.gymcrm_config_defaults){
+        return Object.assign({}, window.gymcrm_config_defaults, cfg);
+      }
+      return cfg;
     }
 
     joinForm.addEventListener('submit', async (e)=>{
       e.preventDefault();
-      const cfg = loadConfig();
+      const cfg = resolveConfig();
       if(!cfg.supabaseUrl || !cfg.supabaseKey){ alert('Site not configured. Please try again later.'); return; }
       const supabase = createClient(cfg.supabaseUrl, cfg.supabaseKey);
       const payload = {
